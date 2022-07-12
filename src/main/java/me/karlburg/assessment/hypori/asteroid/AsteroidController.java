@@ -20,7 +20,7 @@ public class AsteroidController {
     public List<AsteroidEntity> getAsteroids(
             @RequestParam MultiValueMap<String, String> params) {
 
-        var set = this.factory.convert(params);
-        return this.service.getAsteroids();
+        var filterQuery = this.factory.convert(params);
+        return this.service.getAsteroids(filterQuery);
     }
 }
