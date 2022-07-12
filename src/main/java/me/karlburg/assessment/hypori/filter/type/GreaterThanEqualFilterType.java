@@ -3,14 +3,15 @@ import me.karlburg.assessment.hypori.filter.FilterName;
 import me.karlburg.assessment.hypori.filter.FilterType;
 import org.springframework.data.jpa.domain.Specification;
 
-@FilterName("eq")
-public class EqualFilterType implements FilterType {
+@FilterName("gte")
+public class GreaterThanEqualFilterType extends NumberedFilterType {
 
     @Override
     public <E> Specification<E> generateSpecification(
             final String field, final String value) {
 
         return (root, query, criteriaBuilder)
-                -> criteriaBuilder.equal(root.get(field), value);
+                -> criteriaBuilder.greaterThanOrEqualTo(
+                        root.get(field), value);
     }
 }

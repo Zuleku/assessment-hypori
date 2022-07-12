@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
 
 // Java Language Imports
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -51,19 +52,19 @@ public class FilterFactory {
     }
 
     /**
-     * Converts the supplied values to a collection of {@code FilterQuery}.
-     * This will utilize the {@link #FILTER_PATTERN} to determine the
-     * {@link FilterType} to assign to the specific filter process.
+     * Converts the supplied values to a collection of queries inside the
+     * {@code FilterQuery}. This will utilize the {@link #FILTER_PATTERN}
+     * to determine the {@link FilterType} to assign to the specific
+     * filter process.
      *
      * @param params parameter map, usually retrieved from the query-params
      *               of an HTTP request call to the application
-     * @return collection of objects that can be used to create a filter
+     * @return object that contains the collection of filters
      */
-    public Set<FilterQuery> convert(MultiValueMap<String, String> params) {
-        var filterQuerySet = new HashSet<FilterQuery>();
+    public FilterQuery convert(MultiValueMap<String, String> params) {
+        var violations = new ArrayList<FilterViolation>();
+        var filterQuery = new FilterQuery("");
         for(var key : params.keySet()) {
-            var filterQuery = new FilterQuery(key);
-            filterQuerySet.add(filterQuery);
 
             // TODO: look into moving this to a function
             valueLoop: for(var value : params.get(key)) {
@@ -71,8 +72,8 @@ public class FilterFactory {
                 if(!matcher.find()) {
                     /* TODO: logically, the regular expression should cover
                      *       all cases, need to investigate */
-                    filterQuery.error(String.format(
-                            "Filter pattern does not match: %s", value));
+                    violations.add(new FilterViolation(key, String.format(
+                            "Filter pattern does not match: %s", value)));
                 }
 
                 var filterValue = matcher.group(2);
@@ -87,14 +88,17 @@ public class FilterFactory {
                     // TODO: this check is unnecessary and can be removed
                     if(Objects.isNull(filterName)) { continue; }
                     if(filterName.value().equals(typeName)) {
-                        filterQuery.addEntry(filterType, filterValue);
+                        filterQuery.addEntry(filterType, key, filterValue);
                         continue valueLoop;
                     }
                 }
-                filterQuery.error(String.format(
-                        "No filter exists to process '%s'", typeName));
+                violations.add(new FilterViolation(key, String.format(
+                        "No filter exists to process '%s'", typeName)));
             }
         }
-        return filterQuerySet;
+        if(!violations.isEmpty()) {
+
+        }
+        return filterQuery;
     }
 }
