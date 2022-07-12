@@ -17,8 +17,10 @@ public class AsteroidController {
     private AsteroidService service;
 
     @GetMapping("/asteroids")
-    public List<AsteroidEntity> getAsteroids(@RequestParam MultiValueMap<String, String> params) {
-        var set = this.factory.convertParams(params);
+    public List<AsteroidEntity> getAsteroids(
+            @RequestParam MultiValueMap<String, String> params) {
+
+        var set = this.factory.convert(params);
         return this.service.getAsteroids();
     }
 }

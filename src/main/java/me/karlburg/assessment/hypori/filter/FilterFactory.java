@@ -1,8 +1,11 @@
 package me.karlburg.assessment.hypori.filter;
-//import me.karlburg.assessment.hypori.filter.type.EqualFilterType;
+
+// Spring Framework Imports
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
+
+// Java Language Imports
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -11,27 +14,67 @@ import java.util.regex.Pattern;
 @Component
 public class FilterFactory {
 
-    private static final String DEFAULT_FILTER = "eq";
-    private static final Pattern FILTER_PATTERN
+    /**
+     * Default filter type to utilize if no specific value is stated.
+     */
+    public static final String DEFAULT_FILTER = "eq";
+
+    /**
+     * Regular expression pattern used to extract the filter statement.
+     * Pattern is stated as a static resource to help prevent constant
+     * re-compilation of the regular expression.
+     */
+    public static final Pattern FILTER_PATTERN
             = Pattern.compile("^(?:([^:]*):)?(.*)$");
 
+    /**
+     * Collection of {@link FilterType} beans with a defined
+     * {@link FilterName} annotation.
+     */
     private final Set<FilterType> filterTypes;
 
-    private FilterFactory(Set<FilterType> filterTypes) {
-        this.filterTypes = filterTypes;
-        // remove all types without name
+    /**
+     * Constructs a {@code FilterFactory} with the supplied injected beans.
+     * This will sort through the beans and only select the appropriate
+     * objects based on the existence of the {@link FilterName} annotation.
+     *
+     * @param filterTypes collection of beans in application context
+     */
+    public FilterFactory(Set<FilterType> filterTypes) {
+        this.filterTypes = new HashSet<>();
+        for(var filterType : filterTypes) {
+            var clazz = filterType.getClass();
+            if(clazz.isAnnotationPresent(FilterName.class)) {
+                this.filterTypes.add(filterType);
+            }
+        }
     }
 
-    public Set<FilterQuery> convertParams(MultiValueMap<String, String> params) {
+    /**
+     * Converts the supplied values to a collection of {@code FilterQuery}.
+     * This will utilize the {@link #FILTER_PATTERN} to determine the
+     * {@link FilterType} to assign to the specific filter process.
+     *
+     * @param params parameter map, usually retrieved from the query-params
+     *               of an HTTP request call to the application
+     * @return collection of objects that can be used to create a filter
+     */
+    public Set<FilterQuery> convert(MultiValueMap<String, String> params) {
         var filterQuerySet = new HashSet<FilterQuery>();
         for(var key : params.keySet()) {
             var filterQuery = new FilterQuery(key);
             filterQuerySet.add(filterQuery);
-            loop: for(var value : params.get(key)) {
+
+            // TODO: look into moving this to a function
+            valueLoop: for(var value : params.get(key)) {
                 var matcher = FILTER_PATTERN.matcher(value);
                 if(!matcher.find()) {
-                    System.out.println("");
+                    /* TODO: logically, the regular expression should cover
+                     *       all cases, need to investigate */
+                    filterQuery.error(String.format(
+                            "Filter pattern does not match: %s", value));
                 }
+
                 var filterValue = matcher.group(2);
                 var typeName = matcher.group(1);
                 if(Objects.isNull(typeName) || typeName.isBlank()) {
@@ -41,13 +84,15 @@ public class FilterFactory {
                 for(var filterType : this.filterTypes) {
                     var filterName = AnnotationUtils.findAnnotation(
                             filterType.getClass(), FilterName.class);
+                    // TODO: this check is unnecessary and can be removed
                     if(Objects.isNull(filterName)) { continue; }
                     if(filterName.value().equals(typeName)) {
                         filterQuery.addEntry(filterType, filterValue);
-                        continue loop;
+                        continue valueLoop;
                     }
                 }
-                // record error in filter-query
+                filterQuery.error(String.format(
+                        "No filter exists to process '%s'", typeName));
             }
         }
         return filterQuerySet;

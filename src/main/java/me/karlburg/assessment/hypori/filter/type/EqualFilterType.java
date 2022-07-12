@@ -5,7 +5,7 @@ import me.karlburg.assessment.hypori.filter.FilterType;
 @FilterName("eq")
 public class EqualFilterType implements FilterType {
 
-    public boolean matchType(String type) {
-        return "eq".equals(type);
+    public boolean checkTypes(String value) {
+        return "eq".equals(value);
     }
 }
